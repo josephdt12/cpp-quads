@@ -7,53 +7,58 @@ using namespace cv;
 
 class Quadrant {
 public:
-	int top_x_, top_y_, width_, height_;
+	int top_x_, top_y_;
 	cv::Mat data_;
+	std::vector<double> means_;
 
 	// Copy rectangle from region
-	Quadrant(cv::Mat& region, int top_x, int top_y, int height, int width) {
-		data_ = region(Rect(top_x, top_y, height, width));
-		top_x_ = top_x;
-		top_y_ = top_y;
-		width_ = width;
-		height = height_;
+	Quadrant(cv::Mat& region, int top_x, int top_y, int width, int height,
+			int orig_x, int orig_y) : means_(3,0) {
+
+		data_ = region(Rect(top_x, top_y, width, height));
+		top_x_ = orig_x + top_x;
+		top_y_ = orig_y + top_y;
+	}
+
+	// Divide Quadrant into 4 Quadrants and return
+	std::vector<Quadrant> DivideRegion() {
+		std::vector<Quadrant> quadrants;
+		int width = data_.cols, height = data_.rows;
+
+		quadrants.emplace_back(Quadrant(data_, 0, 0, width/2, height/2,
+			top_x_, top_y_));
+		quadrants.emplace_back(Quadrant(data_, width/2, 0 , width/2, height/2,
+			top_x_, top_y_));
+		quadrants.emplace_back(Quadrant(data_, 0, height/2, width/2, height/2,
+			top_x_, top_y_));
+		quadrants.emplace_back(Quadrant(data_, width/2, height/2, width/2, height/2,
+			top_x_, top_y_));
+
+		return quadrants;
 	}
 
 	// Gets the mean RGB values for this Quadrant in the original image
 	std::vector<double> RegionMean(cv::Mat& original) {
-		std::cout << top_x_ << " and " << top_y_ << std::endl;
-		std::vector<double> means(3);
+		//std::vector<double> means(3);
 		for (int row = 0; row < data_.rows; ++row) {
 			for (int col = 0; col < data_.cols; ++col) {
-				Vec3b point = original.at<Vec3b>(top_x_ + col, top_y_ + row);
-				means[0] += point[0];
-				means[1] += point[1];
-				means[2] += point[2];
+				Vec3b point = original.at<Vec3b>(top_y_ + row, top_x_ + col);
+				means_[0] += point[0];
+				means_[1] += point[1];
+				means_[2] += point[2];
 			}
 		}
 		for (int i = 0; i < 3; ++i)
-			means[i] /= (data_.rows * data_.cols);
+			means_[i] /= (data_.rows * data_.cols);
 
-		return means;
+		return means_;
+	}
+
+	// Fill this Quadrant with the mean RGB value from original image
+	void FillRegion() {
+		data_ = Scalar(means_[0], means_[1], means_[2]);
 	}
 };
-
-// Determine the mean RGB values for a region, based on the original pixels
-std::vector<double> RegionMean(cv::Mat& region) {
-	std::vector<double> means(3);
-	for (int row = 0; row < region.rows; ++row) {
-		for (int col = 0; col < region.cols; ++col) {
-			Vec3b point = region.at<Vec3b>(row,col);
-			means[0] += point[0];
-			means[1] += point[1];
-			means[2] += point[2];
-		}
-	}
-	for (int i = 0; i < 3; ++i)
-		means[i] /= (region.rows * region.cols);
-
-	return means;
-}
 
 // Determine the mean square error for a region (R,G, and B combined)
 double MeanSquareError(cv::Mat& region, std::vector<double>& vals) {
@@ -70,31 +75,6 @@ double MeanSquareError(cv::Mat& region, std::vector<double>& vals) {
 	return (errors[0] + errors[1] + errors[2]) / 3;
 }
 
-// Divide region into 4 quadrants
-std::vector<Quadrant> DivideRegion(cv::Mat& region) {
-	std::vector<Quadrant> quadrants;
-	int width = region.cols, height = region.rows;
-
-	quadrants.emplace_back(Quadrant(region,0,0,width/2,height/2));
-	quadrants.emplace_back(Quadrant(region,width/2,0,width/2,height/2));
-	quadrants.emplace_back(Quadrant(region,0,height/2,width/2,height/2));
-	quadrants.emplace_back(Quadrant(region,width/2,height/2,width/2,height/2));
-
-	return quadrants;
-	/*
-	std::vector<cv::Mat> quadrants;
-	int width = region.cols, height = region.rows;
-	std::cout << width << " and " << height << std::endl;
-
-	quadrants.emplace_back(region(Rect(0,0,width/2,height/2)));
-	quadrants.emplace_back(region(Rect(width/2,0,width/2,height/2)));
-	quadrants.emplace_back(region(Rect(0,height/2,width/2,height/2)));
-	quadrants.emplace_back(region(Rect(width/2,height/2,width/2,height/2)));
-
-	return quadrants;
-	*/
-}
-
 void FillRegion(cv::Mat& region, std::vector<double>& RGB) {
 	region = Scalar(RGB[0], RGB[1], RGB[2]);
 }
@@ -103,16 +83,20 @@ int main(int argc, char** argv) {
 	cv::Mat image = cv::imread(argv[1]);
 	cv::Mat new_image = image.clone();
 
-	std::vector<double> means = RegionMean(image);
-
-	std::vector<Quadrant> quadrants = DivideRegion(new_image);
+	Quadrant original(new_image, 0, 0, new_image.cols, new_image.rows, 0, 0);
+	std::vector<Quadrant> quadrants = original.DivideRegion();
 
 	for (int i = 0; i < 4; ++i) {
-		std::cout << i << std::endl;
 		std::vector<double> values = quadrants[i].RegionMean(image);
-		//std::vector<double> values = RegionMean(quadrants[i].data_);
-		FillRegion(quadrants[i].data_, values);
+		quadrants[i].FillRegion();
 	}
+
+
+	std::vector<Quadrant> quads2 = quadrants[3].DivideRegion();
+	std::vector<double> values = quads2[1].RegionMean(image);
+	quads2[1].FillRegion();
+	std::vector<double> values2 = quads2[3].RegionMean(image);
+	quads2[3].FillRegion();
 
 	namedWindow("Original", CV_WINDOW_AUTOSIZE);
 	namedWindow("Quadrants", CV_WINDOW_AUTOSIZE);
