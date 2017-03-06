@@ -7,19 +7,19 @@ Takes any image and transforms it into a blockier version of itself.
 3. Quadrants with the highest error are divided further, and this continues for the number of iterations provided by the user
 
 ## Original
-![original](lena.jpg)
+![original](images/lena.jpg)
 
 ## Blockified (2,048 iterations)
-![blockified](2048.jpg)
+![blockified](images/2048.jpg)
 
 ## Blockified (100,000 iterations)
-![blockified more](100000.jpg)
+![blockified more](images/100000.jpg)
 
 ## Another example
-![apple](apple.jpg)
+![apple](images/apple.jpg)
 
 ## Blockified (1,024 iterations)
-![apple one](apple1.jpg)
+![apple one](images/apple1.jpg)
 
 ## Blockified (10,500 iterations)
-![apple two](apple2.jpg)
+![apple two](images/apple2.jpg)
