@@ -139,6 +139,12 @@ int main(int argc, char** argv) {
 	imshow("Original", image);
 	imshow("Quadrants", new_image);
 
+	// Save new quadrants image out
+	if (argc < 4)
+		imwrite("quadrants.jpg", new_image);
+	else
+		imwrite(argv[3], new_image);
+
 	waitKey();
 
 	return 0;
