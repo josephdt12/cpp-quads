@@ -69,6 +69,33 @@ public:
 	// Fill this Quadrant with the mean RGB value from original image
 	void FillRegion() {
 		data_ = Scalar(means_[0], means_[1], means_[2]);
+
+        /* FIXME: Adds black border around each quadrant - may be utilized
+         * in future additions
+        // Top, bottom row
+        for (int col = 0; col < data_.cols; ++col) {
+            // Top row
+            data_.at<Vec3b>(0, col)[0] = 0;
+            data_.at<Vec3b>(0, col)[1] = 0;
+            data_.at<Vec3b>(0, col)[2] = 0;
+            // Bot row
+            data_.at<Vec3b>(data_.rows - 1, col)[0] = 0;
+            data_.at<Vec3b>(data_.rows - 1, col)[1] = 0;
+            data_.at<Vec3b>(data_.rows - 1, col)[2] = 0;
+        }
+
+        // Left, right side
+        for (int row = 0; row < data_.rows; ++row) {
+            // Left side
+            data_.at<Vec3b>(row,0)[0] = 0;
+            data_.at<Vec3b>(row,0)[1] = 0;
+            data_.at<Vec3b>(row,0)[2] = 0;
+            // Right side
+            data_.at<Vec3b>(row,data_.cols - 1)[0] = 0;
+            data_.at<Vec3b>(row,data_.cols - 1)[1] = 0;
+            data_.at<Vec3b>(row,data_.cols - 1)[2] = 0;
+        }
+        */
 	}
 
 	// Calculates the mean squared error compared to passed in values
@@ -82,8 +109,9 @@ public:
 				errors[2] += std::pow((point[2] - vals[0]),2);
 			}
 		}
-
-		error_ = ((errors[0] + errors[1] + errors[2]) / 3);
+        
+        // Add an additional weight based on area of the quadrant
+		error_ = std::sqrt((errors[0] + errors[1] + errors[2]) / 3) * (data_.rows * data_.cols);
 		return error_;
 	}
 };
@@ -92,6 +120,11 @@ bool operator<(const Quadrant& lhs, const Quadrant& rhs) {
 	return lhs.error_ < rhs.error_;
 }
 
+// COMMAND LINE ARGUMENTS:
+// 0: PROGRAM NAME
+// 1: INPUT IMAGE
+// 2: ITERATION COUNT (DEFAULT IS 2048)
+// 3: OUTPUT FILE NAME (DEFAULT IS quadrants.jpg)
 int main(int argc, char** argv) {
 	// Read in the image
 	cv::Mat image = cv::imread(argv[1]);
